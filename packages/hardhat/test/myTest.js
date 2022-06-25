@@ -4,38 +4,67 @@ const { solidity } = require("ethereum-waffle");
 
 use(solidity);
 
-describe("My Dapp", function () {
-  let myContract;
+describe("Nft Swapper", function () {
+  let owner, addr1, addr2;
+  let nftContract;
+  let factoryContract;
 
   // quick fix to let gas reporter fetch data from gas station & coinmarketcap
   before((done) => {
     setTimeout(done, 2000);
   });
 
-  describe("YourContract", function () {
-    it("Should deploy YourContract", async function () {
-      const YourContract = await ethers.getContractFactory("YourContract");
 
-      myContract = await YourContract.deploy();
+  describe("SampleNft", function () {
+    it("Should deploy SampleNft", async function () {
+      const SampleNft = await ethers.getContractFactory("SampleNft");
+      
+      nftContract = await SampleNft.deploy();
     });
 
-    describe("setPurpose()", function () {
-      it("Should be able to set a new purpose", async function () {
-        const newPurpose = "Test Purpose";
+    it("Should safe mint 2 NFTs for 2 different accounts", async function () {
+      [owner, addr1, addr2] = await ethers.getSigners();
+      nftContract.connect(owner).safeMint(addr1.address);
+      nftContract.connect(owner).safeMint(addr2.address);
 
-        await myContract.setPurpose(newPurpose);
-        expect(await myContract.purpose()).to.equal(newPurpose);
-      });
+    });
+  });
+    
+  describe("NftSwapperFactory", function () {
+    it("Should deploy NftSwapperFactory", async function () {
+      const NftSwapperFactory = await ethers.getContractFactory("NftSwapperFactory");
 
-      it("Should emit a SetPurpose event ", async function () {
-        const [owner] = await ethers.getSigners();
-
-        const newPurpose = "Another Test Purpose";
-
-        expect(await myContract.setPurpose(newPurpose))
-          .to.emit(myContract, "SetPurpose")
-          .withArgs(owner.address, newPurpose);
+      factoryContract = await NftSwapperFactory.deploy();
+    });
+    
+    
+    describe("deploy NFTSwapper", function () {
+      const nowSeconds = Math.round(new Date().getTime()/1000);
+      it("Should be able to deploy new NftSwapper instance", async function () {
+        let nftSwapperInstanceAddress = await factoryContract.currentNftSwapperContract();
+        expect(nftSwapperInstanceAddress).to.equal("0x0000000000000000000000000000000000000000");
+        
+        await factoryContract.create(nftContract.address, 0, nftContract.address, 1, nowSeconds);
+        nftSwapperInstanceAddress = await factoryContract.currentNftSwapperContract(); 
+        expect(nftSwapperInstanceAddress).to.not.equal("0x0000000000000000000000000000000000000000");
       });
     });
   });
+  
+  describe("NftSwapper instance", async function() {
+    let nftSwapperInstanceAddress; 
+    let NftSwapper; 
+
+    it("Should revert when expiry date in the past ", async function () {
+      nftSwapperInstanceAddress = await factoryContract.currentNftSwapperContract();
+      NftSwapper = await ethers.getContractAt('NftSwapper', nftSwapperInstanceAddress);
+      await NftSwapper.setExpiryDate(Math.round(new Date().getTime()/1000) - 10);
+      await expect( NftSwapper.connect(addr1).swap()).to.be.reverted; // change this to check for specific error 
+    });
+
+  });
+
+
+
+
 });
