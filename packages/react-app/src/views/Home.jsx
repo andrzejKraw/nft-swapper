@@ -456,10 +456,10 @@ function Home({ yourLocalBalance, readContracts, address, userSigner, tx, localP
 // const [offerEvents, setOfferEvents] = useState([]);
   const offerEvents = useEventListener(readContracts, "NftSwapperFactory", "OfferCreated", localProvider, -1);
 
-  const nftTotalSupply = useContractReader(readContracts, "TRANSPARENT_POWER", "totalSupply");
+  const nftTotalSupply = useContractReader(readContracts, "NftContract", "totalSupply");
   
-  const nftApprovalEvents = useEventListener(readContracts, "TRANSPARENT_POWER", "Approval", localProvider, 1);
-  // const nftTransferEvents = useEventListener(readContracts, "TRANSPARENT_POWER", readContracts.TRANSPARENT_POWER?.filters.Transfer(null, address), localProvider, 1);
+  const nftApprovalEvents = useEventListener(readContracts, "NftContract", "Approval", localProvider, 1);
+  // const nftTransferEvents = useEventListener(readContracts, "NftContract", readContracts.NftContract?.filters.Transfer(null, address), localProvider, 1);
   // console.log('rrr', nftTransferEvents)
   // useEffect(() => {
   //   console.log('new attaching listenet')
@@ -493,9 +493,9 @@ function Home({ yourLocalBalance, readContracts, address, userSigner, tx, localP
 
   const getEvents = async () => {
     // console.log('[AK] refreshing events');
-    // const nftContract = readContracts.TRANSPARENT_POWER;
-    // const receivedFilter = readContracts.TRANSPARENT_POWER?.filters.Transfer(null, address);
-    // const sentFilter = readContracts.TRANSPARENT_POWER?.filters.Transfer(address, null);
+    // const nftContract = readContracts.NftContract;
+    // const receivedFilter = readContracts.NftContract?.filters.Transfer(null, address);
+    // const sentFilter = readContracts.NftContract?.filters.Transfer(address, null);
     // if (!sentFilter || !receivedFilter) return;
     // console.log('[AK] filter', receivedFilter);
     // const receivedEvents = await nftContract?.queryFilter(receivedFilter) || [];
@@ -507,18 +507,18 @@ function Home({ yourLocalBalance, readContracts, address, userSigner, tx, localP
   }
   
   useEffect(() => {
-    let filterFromMe = readContracts.TRANSPARENT_POWER?.filters.Transfer(address, null);
-    let filterToMe = readContracts.TRANSPARENT_POWER?.filters.Transfer(null, address);
+    let filterFromMe = readContracts.NftContract?.filters.Transfer(address, null);
+    let filterToMe = readContracts.NftContract?.filters.Transfer(null, address);
 
     let handleEvent = function(from, to, id, evt) {
       setNftTransferEvents(nftTransferEvents => [...nftTransferEvents, evt]);
       console.log('[AK] id', id);
     };
-    readContracts.TRANSPARENT_POWER?.on(filterFromMe, handleEvent);
-    readContracts.TRANSPARENT_POWER?.on(filterToMe, handleEvent);
+    readContracts.NftContract?.on(filterFromMe, handleEvent);
+    readContracts.NftContract?.on(filterToMe, handleEvent);
     return () => {
-      readContracts.TRANSPARENT_POWER?.off(filterFromMe, handleEvent);
-      readContracts.TRANSPARENT_POWER?.off(filterToMe, handleEvent);
+      readContracts.NftContract?.off(filterFromMe, handleEvent);
+      readContracts.NftContract?.off(filterToMe, handleEvent);
     }
 
 
@@ -536,9 +536,9 @@ function Home({ yourLocalBalance, readContracts, address, userSigner, tx, localP
 
   const getMyNfts = async () => {
     console.log('[AK] refreshing events');
-    const nftContract = readContracts.TRANSPARENT_POWER;
-    const receivedFilter = readContracts.TRANSPARENT_POWER?.filters.Transfer(null, address);
-    const sentFilter = readContracts.TRANSPARENT_POWER?.filters.Transfer(address, null);
+    const nftContract = readContracts.NftContract;
+    const receivedFilter = readContracts.NftContract?.filters.Transfer(null, address);
+    const sentFilter = readContracts.NftContract?.filters.Transfer(address, null);
     console.log('[AK] filter', receivedFilter);
     const receivedEvents = await nftContract?.queryFilter(receivedFilter) || [];
     const sentEvents = await nftContract?.queryFilter(sentFilter) || [];
@@ -568,7 +568,7 @@ function Home({ yourLocalBalance, readContracts, address, userSigner, tx, localP
       if (myFilteredEvents[nftId].owned == 1) {
         try {
           const tokenId = myFilteredEvents[nftId].nftId;
-          const tokenURI = fixUrl(await readContracts.TRANSPARENT_POWER.tokenURI(tokenId));
+          const tokenURI = fixUrl(await readContracts.NftContract.tokenURI(tokenId));
           const { data } = await axios.get(tokenURI);
           data.image = fixUrl(data.image);
           myNftsArr.push({ id: tokenId, uri: tokenURI, owner: address, ...data });
@@ -581,7 +581,7 @@ function Home({ yourLocalBalance, readContracts, address, userSigner, tx, localP
     const ids = myNftsArr.map((nft) => nft.id.toNumber());
     
     const nftIndexArr = [];
-    const nftTotalSupply = await readContracts.TRANSPARENT_POWER?.totalSupply();
+    const nftTotalSupply = await readContracts.NftContract?.totalSupply();
     for (let i = 0; i < nftTotalSupply; i++) {
       console.log('[AK3] My collectibles ID ', ids);
       if (ids.indexOf(i+1) === -1) {
@@ -597,7 +597,7 @@ function Home({ yourLocalBalance, readContracts, address, userSigner, tx, localP
   
   const getOtherNftsOptions = async () => {
     const nftIndexArr = [];
-    const nftTotalSupply = await readContracts.TRANSPARENT_POWER?.totalSupply();
+    const nftTotalSupply = await readContracts.NftContract?.totalSupply();
     for (let i = 0; i < nftTotalSupply; i++) {
       console.log('[AK3] My collectibles ID ', myCollectiblesIds);
       if (myCollectiblesIds.indexOf(i+1) === -1) {
@@ -616,8 +616,8 @@ function Home({ yourLocalBalance, readContracts, address, userSigner, tx, localP
         return;
       }
       const tokenId = selectedNftId;//await nftContract.tokenByIndex(value -1);
-      const owner = await readContracts.TRANSPARENT_POWER.ownerOf(tokenId); // await nftContract.ownerOf(tokenId); 
-      const tokenURI = fixUrl(await readContracts.TRANSPARENT_POWER.tokenURI(tokenId));
+      const owner = await readContracts.NftContract.ownerOf(tokenId); // await nftContract.ownerOf(tokenId); 
+      const tokenURI = fixUrl(await readContracts.NftContract.tokenURI(tokenId));
       
       const { data } = await axios.get(tokenURI);
       data.image = fixUrl(data.image);
@@ -872,7 +872,7 @@ function Home({ yourLocalBalance, readContracts, address, userSigner, tx, localP
           <Button
             onClick={async() => {
               if (!ownedNftForSwap || !selectedNftForSwap) return;
-              tx(writeContracts.NftSwapperFactory.clone(readContracts.TRANSPARENT_POWER.address, ownedNftForSwap, readContracts.TRANSPARENT_POWER.address, selectedNftForSwap, { value: ethers.utils.parseEther("0.01") }), () => {
+              tx(writeContracts.NftSwapperFactory.clone(readContracts.NftContract.address, ownedNftForSwap, readContracts.NftContract.address, selectedNftForSwap, { value: ethers.utils.parseEther("0.01") }), () => {
                 showResultMessage()
                 setOwnedNftForSwap(null);
                 setSelectedNftForSwap(null);

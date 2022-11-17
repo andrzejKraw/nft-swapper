@@ -1193,7 +1193,7 @@ module.exports = {
   },
   4: {
     contracts: {
-      TRANSPARENT_POWER: {
+      NftContract: {
         // address: "0xD66617713DA66195a8898abE50F02697BD677A65", //<- previous address
         // address: "0x11b3459996fE5d04D738d31177aF98A2c16c82e0",
         address: "0x227396b75328372db482da3208576d87fa9e8666",

@@ -34,7 +34,7 @@ error URIQueryForNonexistentToken();
  *
  * Assumes that the maximum token id cannot exceed 2**256 - 1 (max value of uint256).
  */
-contract NftContractTest is Context, ERC165, IERC721, IERC721Metadata, Ownable {
+contract NftContract is Context, ERC165, IERC721, IERC721Metadata, Ownable {
     using Address for address;
     using Strings for uint256;
 
@@ -249,7 +249,7 @@ contract NftContractTest is Context, ERC165, IERC721, IERC721Metadata, Ownable {
      * @dev See {IERC721-approve}.
      */
     function approve(address to, uint256 tokenId) public override {
-        address owner = NftContractTest.ownerOf(tokenId);
+        address owner = NftContract.ownerOf(tokenId);
         if (to == owner) revert ApprovalToCurrentOwner();
 
         if (_msgSender() != owner && !isApprovedForAll(owner, _msgSender())) {

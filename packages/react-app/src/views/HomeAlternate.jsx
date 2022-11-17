@@ -402,7 +402,10 @@ const ERC721_ABI = [
   }
 ];
 
-
+const ERC20_ABI = [
+  "function approve(address) returns (bool)",
+  "function allowance(address, address) view returns(uint256)",
+];
 const SWAPPER_ABI = [
     "function swap() payable",
     "function nft1Id() view returns (uint256)",
@@ -434,6 +437,8 @@ function HomeAlternate({ mainnetProvider, localProvider, readContracts, address,
   const [offers, setOffers] = useState([]);
   const [yourNfts, setYourNfts] = useState([]);
 
+  const [swapValue, setSwapValue] = useState('');
+
   const [myNftsOptions, setMyNftsOptions] = useState([]);
   const [otherNftsOptions, setOtherNftsOptions] = useState([]);
   
@@ -443,9 +448,17 @@ function HomeAlternate({ mainnetProvider, localProvider, readContracts, address,
 
   // const offerEvents = useEventListener(readContracts, "NftSwapperFactory", "OfferCreated", localProvider, 1);
 
-  const nftTotalSupply = useContractReader(readContracts, "TRANSPARENT_POWER", "totalSupply");
-    
-    // const nftApprovalEvents = useEventListener(readContracts, "TRANSPARENT_POWER", "Approval", localProvider, 1);
+  const nftTotalSupply = useContractReader(readContracts, "NftContract", "totalSupply");
+  const wethContract = new ethers.Contract("0x0E801D84Fa97b50751Dbf25036d067dCf18858bF", ERC20_ABI, userSigner);
+  
+  const getUserWethDetails = async () => {
+    const allowance = await readContracts.WETH9?.allowance(address,"0xCD8a1C3ba11CF5ECfa6267617243239504a98d90");
+    const balance = await readContracts.WETH9?.balanceOf(address);
+    console.log("AK" + allowance);
+    console.log("AK balance" + balance);
+  }
+
+    // const nftApprovalEvents = useEventListener(readContracts, "NftContract", "Approval", localProvider, 1);
 
   const pullNftDetails = async (nftId, callback) => {
     try {
@@ -454,8 +467,8 @@ function HomeAlternate({ mainnetProvider, localProvider, readContracts, address,
         return;
       }
       const tokenId = nftId;//await nftContract.tokenByIndex(value -1);
-      const owner = await readContracts.TRANSPARENT_POWER.ownerOf(tokenId); // await nftContract.ownerOf(tokenId); 
-      const tokenURI = fixUrl(await readContracts.TRANSPARENT_POWER.tokenURI(tokenId));
+      const owner = await readContracts.NftContract.ownerOf(tokenId); // await nftContract.ownerOf(tokenId); 
+      const tokenURI = fixUrl(await readContracts.NftContract.tokenURI(tokenId));
       
       const { data } = await axios.get(tokenURI);
       data.image = fixUrl(data.image);
@@ -472,7 +485,7 @@ function HomeAlternate({ mainnetProvider, localProvider, readContracts, address,
     let allOffers = [];
     for (let i = 0; i < yourNfts.length; i++) {
       const nft = yourNfts[i];
-      let filter = readContracts.NftSwapperFactory?.filters.OfferCreated(readContracts.TRANSPARENT_POWER.address, nft.id);
+      let filter = readContracts.NftSwapperFactory?.filters.OfferCreated(readContracts.NftContract.address, nft.id);
       const offers = await readContracts.NftSwapperFactory?.queryFilter(filter, -1800, "latest");
       allOffers.push(...offers);
     }
@@ -528,11 +541,11 @@ function HomeAlternate({ mainnetProvider, localProvider, readContracts, address,
   }
 
   const getMyNfts = async () => {
-    if (!address || !readContracts.TRANSPARENT_POWER) return;
+    if (!address || !readContracts.NftContract) return;
     setLoadingNftInProgress(true);
     setYourNftIdForSwap(null);
 
-    const nftContract = new ethers.Contract(readContracts.TRANSPARENT_POWER.address, ERC721_ABI, userSigner);
+    const nftContract = new ethers.Contract(readContracts.NftContract.address, ERC721_ABI, userSigner);
     const receivedFilter = nftContract.filters.Transfer(null, address);
     const sentFilter = nftContract.filters.Transfer(address, null);
     
@@ -583,6 +596,7 @@ function HomeAlternate({ mainnetProvider, localProvider, readContracts, address,
     setTargetNftIdForSwap(null);
     setOtherNftsOptions([]);
     getOffers();
+    getUserWethDetails();
   }, [yourNfts]);
 
   useEffect(() => {
@@ -676,14 +690,24 @@ function HomeAlternate({ mainnetProvider, localProvider, readContracts, address,
               }
             </Col>
           <div style={{width: 900, margin: "auto", marginTop: 32, paddingBottom: 32 }}>
+            <Input
+              id="swap_value" 
+              name="swap_value"
+              onChange={e => setSwapValue(e.target.value)}
+              // autoComplete="off"
+              // autoFocus={props.autoFocus}
+              placeholder="Set swap value"
+              // prefix={<Blockie address={currentValue} size={8} scale={3} />}
+            ></Input>
+            <Text>{swapValue}</Text>
             <Button
               disabled={!yourNftForSwap || !targetNftForSwap}
               onClick={async() => {
-                const nftOnwer = await readContracts.TRANSPARENT_POWER.ownerOf(yourNftIdForSwap);
+                const nftOnwer = await readContracts.NftContract.ownerOf(yourNftIdForSwap);
                 if (nftOnwer != address) {
                   return;
                 }
-                tx(writeContracts.NftSwapperFactory.clone(readContracts.TRANSPARENT_POWER.address, yourNftForSwap.id, readContracts.TRANSPARENT_POWER.address, targetNftForSwap.id, { value: ethers.utils.parseEther("0.01") }));
+                tx(writeContracts.NftSwapperFactory.clone(readContracts.NftContract.address, yourNftForSwap.id, readContracts.NftContract.address, targetNftForSwap.id, { value: ethers.utils.parseEther("0.01") }));
               }}
             >
               Create an offer

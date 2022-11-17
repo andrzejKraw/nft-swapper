@@ -61,7 +61,7 @@ const ipfs = create({ host: "ipfs.infura.io", port: "5001", protocol: "https" })
 */
 
 /// 📡 What chain are your contracts deployed to?
-const initialNetwork = NETWORKS.mainnet; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
+const initialNetwork = NETWORKS.localhost; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
 
 // 😬 Sorry for all the console logging
 const DEBUG = false;
@@ -297,6 +297,12 @@ function App(props) {
         <Menu.Item key="/">
           <Link to="/">Swapper app</Link>
         </Menu.Item>
+        <Menu.Item key="/weth">
+          <Link to="/weth">WETH</Link>
+        </Menu.Item>
+        <Menu.Item key="/swapper">
+          <Link to="/swapper">Swapper</Link>
+        </Menu.Item>
         <Menu.Item key="/faq">
           <Link to="/faq">FAQ</Link>
         </Menu.Item>
@@ -319,7 +325,18 @@ function App(props) {
             />
         </Route>
 
-        {/* <Route path="/nft">
+        <Route path="/weth">
+          <Contract
+            name="WETH9"
+            price={price}
+            signer={userSigner}
+            provider={localProvider}
+            address={address}
+            blockExplorer={blockExplorer}
+            contractConfig={contractConfig}
+          />
+        </Route>
+        <Route path="/swapper">
           <Contract
             name="NftSwapperFactory"
             price={price}
@@ -329,7 +346,7 @@ function App(props) {
             blockExplorer={blockExplorer}
             contractConfig={contractConfig}
           />
-        </Route> */}
+        </Route>
         <Route path="/faq">
           <FAQ/>
 

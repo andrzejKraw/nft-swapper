@@ -4,10 +4,16 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./NftSwapper.sol";
 
+error SwapPaused();
+
+
 contract NftSwapperFactory is Ownable {
+    IERC20 public wETHContract = IERC20(0x0E801D84Fa97b50751Dbf25036d067dCf18858bF); // mainnet: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 
+    
     address public immutable nftSwapperContract;
     bool public swapPaused;
     uint256 public swapFee = 0.01 ether;
@@ -18,7 +24,8 @@ contract NftSwapperFactory is Ownable {
     event OfferCreated(
         address indexed nftCollection,
         uint256 indexed nftId,
-        address pair
+        address pair,
+        uint256 swapPrice
     );
 
     constructor(address _nftSwapperImplementation) {
@@ -48,15 +55,18 @@ contract NftSwapperFactory is Ownable {
         address _nft1,
         uint256 _nft1Id,
         address _nft2,
-        uint256 _nft2Id
+        uint256 _nft2Id,
+        uint256 _swapPrice
     ) public payable {
-        require(swapPaused == false, "Creating offers is paused at the moment");
-        require(msg.value >= swapFee, "Fee too low.");
+        if (swapPaused == true) revert SwapPaused();
+        if (msg.value < swapFee) revert FeeTooLow();
+        // require(swapPaused == false, "Creating offers is paused at the moment");
+        // require(msg.value >= swapFee, "Fee too low.");
         NftSwapper cloned = NftSwapper(nftSwapperContract.clone());
         cloned.create(_nft1, _nft1Id, _nft2, _nft2Id, swapFee);
         (bool sent, ) = nftSwapperSafe.call{value: msg.value}("");
         require(sent, "Something went wrong with transferring fee");
-        emit OfferCreated(_nft1, _nft1Id, address(cloned));
-        emit OfferCreated(_nft2, _nft2Id, address(cloned));
+        emit OfferCreated(_nft1, _nft1Id, address(cloned), _swapPrice);
+        emit OfferCreated(_nft2, _nft2Id, address(cloned), _swapPrice);
     }
 }

@@ -27,7 +27,7 @@ const { isAddress, getAddress, formatUnits, parseUnits } = utils;
 //
 // Select the network you want to deploy to here:
 //
-const defaultNetwork = "mainnet";
+const defaultNetwork = "localhost";
 
 const mainnetGwei = 21;
 
@@ -279,6 +279,15 @@ module.exports = {
       },
       {
         version: "0.6.7",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: "0.4.18",
         settings: {
           optimizer: {
             enabled: true,
