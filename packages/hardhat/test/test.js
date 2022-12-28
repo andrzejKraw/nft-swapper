@@ -4,102 +4,197 @@ const { solidity } = require("ethereum-waffle");
 
 use(solidity);
 
-describe("NFT Swap", async () => {
+describe("NFT Swapper New", async() => {
   let deployer;
-  let addr1;
+  let addr1; 
   let addr2;
-  let addrOther;
-  // quick fix to let gas reporter fetch data from gas station & coinmarketcap
-  before((done) => {
-    setTimeout(done, 2000);
-  });
+  let wethInstance;
+  let nftInstance
+  let nftSwapper;
 
-  describe("Fundamental low-level operations", async () => {
-    let nftInstance;
-    let nftSwapper;
-    let nftSwapperFactory;
-    before(async () => {
+
+  describe("Initialize contract", async() => {
+    // before(async() => {
+      
+      //   // const sampleNft = await ethers.getContractFactory("SampleNft");
+      //   // sampleNft 
+      // });
+      
+    it("Should deploy NftSwapper", async() => {
       [deployer, addr1, addr2] = await ethers.getSigners();
-
-      const nft = await ethers.getContractFactory("SampleNft");
-      nftInstance = await nft.deploy();
-      await nftInstance.safeMint(addr1.address);
-      await nftInstance.safeMint(addr2.address);
-    });
-
-    it("Should deploy NftSwapper", async function () {
-      const NftSwapper = await ethers.getContractFactory("NftSwapper");
-
-      nftSwapper = await NftSwapper.deploy();
+      const Weth = await ethers.getContractFactory("WETH9");
+      wethInstance = await Weth.deploy();
+      const NftSwapper = await ethers.getContractFactory("NftSwapperNew");
+      nftSwapper = await NftSwapper.deploy(wethInstance.address);
       expect(nftSwapper.address).to.not.be.equal(0);
+      expect(await nftSwapper.wethContractAddress()).to.be.equal(wethInstance.address);
+    });
+    
+    it("Should deposit weth to testing accounts", async() => {
+      const initialBalance = "0.5";
+      await wethInstance.connect(addr1).deposit({value: ethers.utils.parseEther(initialBalance)});
+      await wethInstance.connect(addr2).deposit({value: ethers.utils.parseEther(initialBalance)});
+      const addr1Balance = await wethInstance.balanceOf(addr1.address);
+      const addr2Balance = await wethInstance.balanceOf(addr2.address);
+      
+      expect(addr1Balance).to.be.equal(ethers.utils.parseEther(initialBalance));
+      expect(addr2Balance).to.be.equal(ethers.utils.parseEther(initialBalance));
+    });
+    
+    it("Should deploy test NFT contract", async() => {
+      const NftContract = await ethers.getContractFactory("NftContract");
+      nftInstance = await NftContract.deploy("TestNftContract", "TNC");
+      expect(nftInstance.address).to.not.be.equal(0);
     });
 
-    it("Should deploy NftSwapper as a clone from NftSwapperFactory", async () => {
-      const NftSwapperFactory = await ethers.getContractFactory(
-        "NftSwapperFactory"
-      );
-      nftSwapperFactory = await NftSwapperFactory.deploy(nftSwapper.address);
-      await expect(
-        nftSwapperFactory.clone(nftInstance.address, 0, nftInstance.address, 1)
-      ).to.emit(nftSwapperFactory, "OfferCreated");
-    });
+    // it("Should batch mint some NFTs for testing accounts", async() => {
+    //   await nftInstance.batchMintNfts(addr1.address, 20);
+    //   await nftInstance.batchMintNfts(addr2.address, 20);
+    // });
   });
 
-  describe("Swaps", async () => {
-    let nftInstance;
-    let nftSwapperFactory;
-    let nftSwapper;
-    let swap;
-
-    beforeEach(async () => {
-      const nft = await ethers.getContractFactory("SampleNft");
-      nftInstance = await nft.deploy();
-      await nftInstance.safeMint(addr1.address);
-      await nftInstance.safeMint(addr2.address);
-
-      const NftSwapper = await ethers.getContractFactory("NftSwapper");
-      nftSwapper = await NftSwapper.deploy();
-
-      const NftSwapperFactory = await ethers.getContractFactory(
-        "NftSwapperFactory"
-      );
-      nftSwapperFactory = await NftSwapperFactory.deploy(nftSwapper.address);
-      const cloned = await nftSwapperFactory.clone(
-        nftInstance.address,
-        0,
-        nftInstance.address,
-        1
-      );
-      const recipt = await cloned.wait();
-
-      if (recipt.events[0].event === "OfferCreated") {
-        swap = await ethers.getContractAt(
-          "NftSwapper",
-          recipt.events[0].args.pair
-        );
-      }
-      await nftInstance.connect(addr1).approve(swap.address, 0);
-      await nftInstance.connect(addr2).approve(swap.address, 1);
+  describe("NFT Swap within same collection", async() => {
+    const makerId = 1;
+    const takerId = 21; 
+    beforeEach(async() => {
+      const NftContract = await ethers.getContractFactory("NftContract");
+      nftInstance = await NftContract.deploy("TestNftContract", "TNC");
+      await nftInstance.batchMintNfts(addr1.address, 20);
+      await nftInstance.batchMintNfts(addr2.address, 20);
     });
 
-    it("Cannot swap if not the owner of one of the NFTs", async () => {
-      await expect(swap.connect(addrOther).swap()).to.be.reverted;
+    it("Should create swap offer without additional payment", async() => {
+      const { address  }= nftInstance;
+      
+      await expect(nftSwapper.connect(addr1).createOffer(address, makerId, address, takerId, addr1.address, 0))
+        .to.emit(nftSwapper, "SwapStateChanged")
+        .withArgs("0", 0);
     });
 
-    it("Swap tokens by first owner", async () => {
-      await swap.connect(addr1).swap();
-      expect([
-        await nftInstance.ownerOf(0),
-        await nftInstance.ownerOf(1),
-      ]).to.deep.equal([addr2.address, addr1.address]);
+    it("Should be able to cancel swap", async() => {
+      const { address  } = nftInstance;
+      const tx = await nftSwapper.connect(addr1).createOffer(address, makerId, address, takerId, addr1.address, 0);
+      const rc = await tx.wait(); 
+      const event = rc.events.find(event => event.event === 'SwapStateChanged');
+      const [swapId, newState] = event.args;
+      
+      await expect(nftSwapper.connect(addr1).cancelSwap(swapId))
+      .to.emit(nftSwapper, "SwapStateChanged")
+      .withArgs(swapId, 2);
+    });
+    
+    it("Should be able to perform simple swap by maker", async() => {
+      const { address  } = nftInstance;
+      expect(await nftInstance.ownerOf(makerId)).to.be.equal(addr1.address);
+      expect(await nftInstance.ownerOf(takerId)).to.be.equal(addr2.address);
+
+      const tx = await nftSwapper.connect(addr1).createOffer(address, makerId, address, takerId, addr1.address, 0);
+      const rc = await tx.wait(); 
+      const event = rc.events.find(event => event.event === 'SwapStateChanged');
+      const [swapId, newState] = event.args;
+      await nftInstance.connect(addr1).approve(nftSwapper.address, makerId);
+      await nftInstance.connect(addr2).approve(nftSwapper.address, takerId);
+
+      expect(await nftSwapper.connect(addr1).makeSwap(swapId))
+        .to.emit(nftSwapper, "SwapStateChanged")
+        .withArgs(swapId, 1);
+     
+      expect(await nftInstance.ownerOf(makerId)).to.be.equal(addr2.address);
+      expect(await nftInstance.ownerOf(takerId)).to.be.equal(addr1.address);
+
     });
 
-    it("Swap tokens by second owner", async () => {
-      await swap.connect(addr2).swap();
-      expect([
-        await nftInstance.ownerOf(0),
-        await nftInstance.ownerOf(1),
-      ]).to.deep.equal([addr2.address, addr1.address]);
+    it("Should be able to perform simple swap by taker", async() => {
+      const { address  } = nftInstance;
+      expect(await nftInstance.ownerOf(makerId)).to.be.equal(addr1.address);
+      expect(await nftInstance.ownerOf(takerId)).to.be.equal(addr2.address);
+
+      const tx = await nftSwapper.connect(addr1).createOffer(address, makerId, address, takerId, addr1.address, 0);
+      const rc = await tx.wait(); 
+      const event = rc.events.find(event => event.event === 'SwapStateChanged');
+      const [swapId, newState] = event.args;
+      await nftInstance.connect(addr1).approve(nftSwapper.address, makerId);
+      await nftInstance.connect(addr2).approve(nftSwapper.address, takerId);
+
+      expect(await nftSwapper.connect(addr2).makeSwap(swapId))
+        .to.emit(nftSwapper, "SwapStateChanged")
+        .withArgs(swapId, 1);
+     
+      expect(await nftInstance.ownerOf(makerId)).to.be.equal(addr2.address);
+      expect(await nftInstance.ownerOf(takerId)).to.be.equal(addr1.address);
+
+    });
+
+    it("Should accept additional WETH payments to taker", async() => {
+      const swapPayment = ethers.utils.parseEther("0.1");
+      const { address  } = nftInstance;
+      expect(await nftInstance.ownerOf(makerId)).to.be.equal(addr1.address);
+      expect(await nftInstance.ownerOf(takerId)).to.be.equal(addr2.address);
+
+      const tx = await nftSwapper.connect(addr1).createOffer(address, makerId, address, takerId, addr1.address, swapPayment);
+      const rc = await tx.wait(); 
+      const event = rc.events.find(event => event.event === 'SwapStateChanged');
+      const [swapId, newState] = event.args;
+      await nftInstance.connect(addr1).approve(nftSwapper.address, makerId);
+      await nftInstance.connect(addr2).approve(nftSwapper.address, takerId);
+      
+      const beforeMakerBalance = await wethInstance.balanceOf(addr1.address);
+      const beforeTakerBalance = await wethInstance.balanceOf(addr2.address);
+
+      await wethInstance.connect(addr1).approve(nftSwapper.address, swapPayment);
+
+      expect(await nftSwapper.connect(addr2).makeSwap(swapId))
+        .to.emit(nftSwapper, "SwapStateChanged")
+        .withArgs(swapId, 1); 
+     
+      expect(await nftInstance.ownerOf(makerId)).to.be.equal(addr2.address);
+      expect(await nftInstance.ownerOf(takerId)).to.be.equal(addr1.address);
+      
+      expect(await wethInstance.balanceOf(addr1.address)).to.equal(beforeMakerBalance.sub(swapPayment));
+      expect(await wethInstance.balanceOf(addr2.address)).to.equal(beforeTakerBalance.add(swapPayment));
+    });
+
+    it("Should not allow to swap cancelled swaps", async() => {
+      const { address  } = nftInstance;
+      expect(await nftInstance.ownerOf(makerId)).to.be.equal(addr1.address);
+      expect(await nftInstance.ownerOf(takerId)).to.be.equal(addr2.address);
+
+      const tx = await nftSwapper.connect(addr1).createOffer(address, makerId, address, takerId, addr1.address, 0);
+      const rc = await tx.wait(); 
+      const event = rc.events.find(event => event.event === 'SwapStateChanged');
+      const [swapId, newState] = event.args;
+      await nftInstance.connect(addr1).approve(nftSwapper.address, makerId);
+      await nftInstance.connect(addr2).approve(nftSwapper.address, takerId);
+
+      await nftSwapper.connect(addr1).cancelSwap(swapId);
+
+
+      await expect(nftSwapper.connect(addr2).makeSwap(swapId))
+        .to.be.revertedWith("OfferCancelled");
+    });
+
+    it("Should revert already completed swap", async() => {
+      const { address  } = nftInstance;
+      expect(await nftInstance.ownerOf(makerId)).to.be.equal(addr1.address);
+      expect(await nftInstance.ownerOf(takerId)).to.be.equal(addr2.address);
+
+      const tx = await nftSwapper.connect(addr1).createOffer(address, makerId, address, takerId, addr1.address, 0);
+      const rc = await tx.wait(); 
+      const event = rc.events.find(event => event.event === 'SwapStateChanged');
+      const [swapId, newState] = event.args;
+      await nftInstance.connect(addr1).approve(nftSwapper.address, makerId);
+      await nftInstance.connect(addr2).approve(nftSwapper.address, takerId);
+
+      expect(await nftSwapper.connect(addr2).makeSwap(swapId))
+        .to.emit(nftSwapper, "SwapStateChanged")
+        .withArgs(swapId, 1);
+     
+      expect(await nftInstance.ownerOf(makerId)).to.be.equal(addr2.address);
+      expect(await nftInstance.ownerOf(takerId)).to.be.equal(addr1.address);
+
+      await expect(nftSwapper.connect(addr2).makeSwap(swapId))
+        .to.be.revertedWith("OfferCompleted");
+
     });
   });
-});
+})

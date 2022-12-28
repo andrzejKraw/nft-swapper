@@ -4,8 +4,8 @@ const { ethers } = require("hardhat");
 
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
-  const MY_BURNER_ADDRESS = "0xB348da82a6981bd7c61EBf93aea60F1f092F3F03";
-  const MY_BURNER_ADDRESS_2 = "0xdc359946C039d1f91F9D84C620f6F2E391742e17";
+  const MY_BURNER_ADDRESS = "0xCa069840013Fb823385dd633717e252e3a652c50";
+  const MY_BURNER_ADDRESS_2 = "0xd8a460AEAE3b9E75550edF9d1A31A77A5DFBe861";
   const START_UNITS = ethers.utils.parseEther("1");
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
@@ -50,7 +50,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
   await deploy("NftSwapperFactory", {
     from: deployer,
-    args: [NftSwapper.address],
+    args: [NftSwapper.address, wethContract.address],
     log: true,
     waitConfirmations: 1,
   });

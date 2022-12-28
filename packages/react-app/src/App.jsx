@@ -66,7 +66,7 @@ const initialNetwork = NETWORKS.localhost; // <------- select your target fronte
 // 😬 Sorry for all the console logging
 const DEBUG = false;
 const NETWORKCHECK = true;
-const USE_BURNER_WALLET = false; // toggle burner wallet feature
+const USE_BURNER_WALLET = true; // toggle burner wallet feature
 const USE_NETWORK_SELECTOR = false;
 
 
@@ -303,6 +303,9 @@ function App(props) {
         <Menu.Item key="/swapper">
           <Link to="/swapper">Swapper</Link>
         </Menu.Item>
+        <Menu.Item key="/nftcontract">
+          <Link to="/nftcontract">Nft</Link>
+        </Menu.Item>
         <Menu.Item key="/faq">
           <Link to="/faq">FAQ</Link>
         </Menu.Item>
@@ -339,6 +342,17 @@ function App(props) {
         <Route path="/swapper">
           <Contract
             name="NftSwapperFactory"
+            price={price}
+            signer={userSigner}
+            provider={localProvider}
+            address={address}
+            blockExplorer={blockExplorer}
+            contractConfig={contractConfig}
+          />
+        </Route>
+        <Route path="/nftcontract">
+          <Contract
+            name="NftContract"
             price={price}
             signer={userSigner}
             provider={localProvider}

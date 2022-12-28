@@ -314,7 +314,7 @@ module.exports = {
   },
   abiExporter: {
     path: "../react-app/src/contracts/ABI",
-    runOnCompile: true,
+    runOnCompile: false,
     clear: true,
     flat: true,
     only: [],
