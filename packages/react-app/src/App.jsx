@@ -34,7 +34,7 @@ import externalContracts from "./contracts/external_contracts";
 // contracts
 import deployedContracts from "./contracts/hardhat_contracts.json";
 import { Transactor, Web3ModalSetup } from "./helpers";
-import { HomeAlternate, FAQ } from "./views";
+import { HomeNew, FAQ } from "./views";
 import { useStaticJsonRPC } from "./hooks";
 import { create } from "ipfs-http-client";
 
@@ -313,7 +313,20 @@ function App(props) {
 
       <Switch>
         <Route exact path="/">
-          <HomeAlternate
+          {/* <HomeAlternate
+            mainnetProvider={mainnetProvider} 
+            localProvider={localProvider} 
+            readContracts={readContracts}
+            address={address}
+            userSigner={userSigner}
+            tx={tx}
+            blockExplorer={blockExplorer}
+            writeContracts={writeContracts}
+            web3Modal={web3Modal}
+            loadWeb3Modal={loadWeb3Modal}
+            logoutOfWeb3Modal={logoutOfWeb3Modal}
+            /> */}
+          <HomeNew
             mainnetProvider={mainnetProvider} 
             localProvider={localProvider} 
             readContracts={readContracts}
